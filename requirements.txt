@@ -1,0 +1,11 @@
+streamlit
+dotenv
+langchain_groq
+langchain_community
+pdfplumber
+pandas
+xlsxwriter
+numpy
+streamlit
+reportlab
+dotenv
