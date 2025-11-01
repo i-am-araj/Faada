@@ -27,6 +27,40 @@ GEN_MODEL = "llama-3.3-70b-versatile"                    # article generation mo
 # Helper Functions
 # -------------------------------
 
+def get_table_json_by_header(pdf_file: str, keyword: str):
+    """
+    Retrieve the first table in a PDF whose header contains a given keyword.
+    Returns table data as a JSON string.
+    """
+    keyword = keyword.lower()
+
+    with pdfplumber.open(pdf_file) as pdf:
+        for page in pdf.pages:
+            extracted = page.extract_tables() or []
+
+            for tbl in extracted:
+                # tbl = list of lists
+                if not tbl or len(tbl) < 2:
+                    continue
+
+                header = tbl[0]
+                rows   = tbl[1:]
+
+                # Normalize to lowercase for searching
+                header_lower = [h.lower() if h else "" for h in header]
+
+                if any(keyword in h for h in header_lower):
+                    # Build DataFrame
+                    df = pd.DataFrame(rows, columns=header)
+
+                    # Convert to JSON string (records format)
+                    json_str = df.to_json(orient="records", force_ascii=False)
+
+                    return json_str   # ✅ return JSON string
+
+    raise ValueError(f"No table found whose header contains keyword '{keyword}'.")
+
+
 def extract_text_from_pdf(uploaded_file):
     """Extracts plain text from PDF file"""
     text = ""
@@ -105,7 +139,7 @@ def generate_article(facts, sample_texts, brand_map):
     "=== WRITING STYLE ===\n"
     "- Follow the structure and tone of the sample report: concise, factual, and professionally journalistic.\n"
     "- Use short paragraphs and a positive yet balanced tone.\n"
-    "- Every major OEM (including 'Others' and 'Total') must appear in both the table AND the analysis paragraphs.\n"
+    "- Every OEM (including 'Others' and 'Total') must appear in both the table AND the analysis paragraphs.\n"
     "- Sentences should smoothly transition between facts, highlighting YoY changes, leadership, and trends.\n"
     "- Avoid speculation, fluff, or marketing language.\n\n"
 
@@ -140,7 +174,6 @@ def generate_article(facts, sample_texts, brand_map):
     "- Use ONLY the above factual data — no external or inferred information.\n"
     "- Mention every OEM listed, including 'Others' and 'Total'.\n"
     "- Keep the tone positive, informative, and aligned with the sample document style.\n"
-    "- Word count should be between 750–950 words.\n"
     "- Ensure numerical accuracy (percentages and units must match the data exactly).\n"
     )
 
@@ -209,7 +242,8 @@ if st.button("🚀 Generate Article"):
             brand_map = dict(zip(df.iloc[:, 0], df.iloc[:, 1]))
 
         with st.spinner("Extracting facts..."):
-            facts = extract_facts(report_text)
+            facts=get_table_json_by_header(report_file,"Tractor OEM")
+            #facts = extract_facts(report_text)
         #st.json(facts)
 
         with st.spinner("Generating article..."):

@@ -4,19 +4,54 @@ import pandas as pd
 import pdfplumber
 from collections import defaultdict
 
-# ----------------------------
+
 # 📌 Extract Tables
 # ----------------------------
-def extract_tables_from_pdf(pdf_file):
+def get_table_json_by_header(pdf_file: str, keyword: str):
+    """
+    Retrieve the first table in a PDF whose header contains a given keyword.
+    Returns table data as a JSON string.
+    """
+    keyword = keyword.lower()
+
+    with pdfplumber.open(pdf_file) as pdf:
+        for page in pdf.pages:
+            extracted = page.extract_tables() or []
+
+            for tbl in extracted:
+                # tbl = list of lists
+                if not tbl or len(tbl) < 2:
+                    continue
+
+                header = tbl[0]
+                rows   = tbl[1:]
+
+                # Normalize to lowercase for searching
+                header_lower = [h.lower() if h else "" for h in header]
+
+                if any(keyword in h for h in header_lower):
+                    # Build DataFrame
+                    df = pd.DataFrame(rows, columns=header)
+
+                    # Convert to JSON string (records format)
+                    json_str = df.to_json(orient="records", force_ascii=False)
+
+                    return json_str   # ✅ return JSON string
+
+    raise ValueError(f"No table found whose header contains keyword '{keyword}'.")
     tables = []
     with pdfplumber.open(pdf_file) as pdf:
         for page in pdf.pages:
-            extracted_tables = page.extract_tables()
-            for table in extracted_tables:
-                if table:
-                    df = pd.DataFrame(table[1:], columns=table[0])  # first row as header
+            for tbl in page.extract_tables() or []:
+                if tbl and len(tbl) >= 2:
+                    df = pd.DataFrame(tbl[1:], columns=tbl[0])
                     tables.append(df)
-    return tables
+
+    if not tables:
+        raise ValueError("No tables found.")
+
+    df = tables[table_index]
+    return df.to_csv(index=False)
 
 # ----------------------------
 # 📌 Year + Column Utilities
@@ -122,3 +157,7 @@ def format_with_units(val, col):
     if col.endswith("_pp") or col.endswith("_pct") or "share" in col or "rate" in col or "%" in col:
         return f"{num:.2f}%"
     return f"{num:.2f}"
+
+if __name__ == "__main__":
+    print("Data Processor Module")
+    print(get_table_json_by_header("Data/Fada.pdf","Tractor OEM"))# ----------------------------
