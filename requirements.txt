@@ -7,5 +7,7 @@ pandas
 xlsxwriter
 numpy
 streamlit
-reportlab
+playwright
+markdown
+FastAPI
 dotenv
