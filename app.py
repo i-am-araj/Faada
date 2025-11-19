@@ -75,7 +75,7 @@ def extract_facts(report_text: str):
     """Use Groq to extract structured Tractor (Trac) JSON facts safely."""
     
     short_instructions = (
-        "Extract only Tractor (Trac) segment data from the report below. "
+        "Extract only Tractor (Trac) segment dataa and publishing date from the report below. "
         "Ignore other segments. Return strictly valid JSON (no commentary). "
         "Schema:\n"
         "{ 'segment': 'Tractor', 'period': '<Month Year>', 'total_sales': <int>, "
@@ -144,8 +144,13 @@ def generate_article(facts, sample_texts, brand_map):
 
     "=== STRUCTURE ===\n"
     "1. Begin with a **headline** that is positive and relevant in H1 font (e.g., 'FADA Retail Sales Report August 2025: Industry records 85,215 Units with 30.14% Growth').\n"
-    "2. Add an **introductory paragraph** summarizing overall tractor (Trac) performance — total sales, YoY growth, "
-    "and drivers such as rural demand or monsoon influence if available.\n"
+    "2. Add an **introductory paragraphs** summarizing overall tractor (Trac) industry performance\n"
+    "(e.g.- 6 June 2025: The Federation of Automobile Dealers Associations (FADA) has released retail sales data for the tractor segment for May 2025."
+     "As per the latest figures, the Indian tractor industry recorded total sales of 71,992 units, marking a 2.75% growth over 70,063 units sold in May 2024.\n"
+     "Despite varied performances across leading OEMs, the industry managed to stay in positive territory." 
+     "This reflects steady rural demand and the early impact of seasonal preparation.)\n"
+     "NOTE: ALL THE CRUCIAL DATA LIKE <DATE>, <SALES FIGURES>, ETC., MUST BE TAKEN FROM THE FACTUAL DATA PROVIDED BELOW AND SHOULD BE IN BOLD.\n"
+     "THE PUBLISHING DATE SHOULD BE EXACT and MENTION SALES DRIVING FACTOR ONLY IF MENTIONED IN FACTS\n\n"
     "3. Insert a **Tractor OEM Performance Table** (in markdown format) with the following columns:\n"
     "   - OEM Name\n"
     "   - <MONTH> <CURRENT YEAR> Sales (e.g., August 2025)\n"
@@ -155,13 +160,20 @@ def generate_article(facts, sample_texts, brand_map):
     "   - <MONTH> <PREVIOUS YEAR> Market Share (%)\n"
     "   - YoY Market Share Growth (%)\n\n"
     "   The table must include all brands present in the data, including 'Others' and 'Total'.\n\n"
-    "4. Write **brand-wise performance analysis paragraphs**, covering each OEM in order of sales:\n"
-    "   - Mention their sales volume, YoY change (in % and units), and market share.\n"
-    "   - For each, briefly describe whether their market share rose, fell, or remained stable.\n"
-    "   - End with a sentence summarizing that OEM’s trend or positioning.\n\n"
-    "5. Write a **summary paragraph** analyzing total performance (the 'Total' row) and comparing overall market sentiment "
-    "with the previous year.\n"
-    "6. Conclude with a **positive outlook** paragraph summarizing future prospects (e.g., festive demand, good monsoon, subsidies).\n\n"
+
+    "4. Write **Brand-Wise Tractor Sales Performance paragraphs explaining each OEM individually – <MONTH> <CURRENT YEAR>**, covering each OEM (including others) in order of sales:\n"
+    "<OEM NAME>, <CURRENT YEAR SALES UNIT>, <CURRENT YEAR DATE>, <LAST YEAR SALES UNIT>, <LAST YEAR DATE>, <YOY UNIT GROWTH>,  <YOY UNIT GROWTH>in percentage,"
+    "<CURRENT YEAR MARKET SHARE>, <LAST YEAR MARKET SHARE> <YOY MARKET SHARE CHANGE>. Highlight leaders, significant gainers, and any noteworthy trends."
+    "(e.g., -Mahindra & Mahindra Ltd (Tractor Division) led the segment with 16,511 units sold in May 2025, up from 15,921 units in the same month last year."
+    " The company registered a 3.71% sales growth." 
+    "Its market share rose from 22.72% in May 2024 to 22.93% in May 2025, marking a 0.21% gain.)\n"
+    "NOTE: ALL THE CRUCIAL DATA LIKE NAMES < SALES FIGURES >, ETC., MUST BE TAKEN FROM THE FACTUAL DATA PROVIDED BELOW AND SHOULD BE IN BOLD.\n"
+    "EACH OEM SHOULD HAVE A SEPERATE PARAGRAPH FOR ITS SALES PERFORMANCE\n\n"
+
+    "5. Write a POSITIVE or NEUTRAL**summary paragraph** analyzing total performance (the 'Total' row) and comparing overall market sentiment "
+    "with the previous year. Also mention the reason of in the change in sales if mentioned."
+    "(e.g., festive demand, good monsoon, subsidies)\n"
+
 
     "=== FACTUAL DATA (Tractor Segment Only) ===\n"
     f"{json.dumps(facts, indent=2)}\n\n"
@@ -182,8 +194,8 @@ def generate_article(facts, sample_texts, brand_map):
             {"role": "user", "content": prompt}
         ],
         model=GEN_MODEL,
-        max_completion_tokens=1500,
-        temperature=0.7
+        max_completion_tokens=2500,
+        temperature=0
     )
 
     return resp.choices[0].message.content
