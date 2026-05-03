@@ -1,10 +1,10 @@
 # streamlit_app.py
-
+from dotenv import load_dotenv
+import os
 import streamlit as st
 import pdfplumber
 import json
 import re
-import os
 import base64
 import pandas as pd
 from dotenv import load_dotenv
@@ -29,36 +29,44 @@ GEN_MODEL = "llama-3.3-70b-versatile"                    # article generation mo
 def get_table_json_by_header(pdf_file: str, keyword: str):
     """
     Retrieve the first table in a PDF whose header contains a given keyword.
-    Returns table data as a JSON string.
+    Returns JSON string or None if not found.
     """
+
     keyword = keyword.lower()
 
-    with pdfplumber.open(pdf_file) as pdf:
-        for page in pdf.pages:
-            extracted = page.extract_tables() or []
+    try:
+        with pdfplumber.open(pdf_file) as pdf:
+            for page_num, page in enumerate(pdf.pages):
 
-            for tbl in extracted:
-                # tbl = list of lists
-                if not tbl or len(tbl) < 2:
-                    continue
+                tables = page.extract_tables() or []
 
-                header = tbl[0]
-                rows   = tbl[1:]
+                for tbl in tables:
+                    if not tbl or len(tbl) < 2:
+                        continue
 
-                # Normalize to lowercase for searching
-                header_lower = [h.lower() if h else "" for h in header]
+                    header = tbl[0]
+                    rows = tbl[1:]
 
-                if any(keyword in h for h in header_lower):
-                    # Build DataFrame
-                    df = pd.DataFrame(rows, columns=header)
+                    # Normalize header
+                    header_clean = [
+                        str(h).strip().lower() if h else "" for h in header
+                    ]
 
-                    # Convert to JSON string (records format)
-                    json_str = df.to_json(orient="records", force_ascii=False)
+                    # 🔥 Flexible match (IMPORTANT)
+                    if any(keyword in h for h in header_clean):
+                        df = pd.DataFrame(rows, columns=header)
 
-                    return json_str   # ✅ return JSON string
+                        return {
+                            "data": df.to_dict(orient="records"),
+                            "page": page_num + 1,
+                            "header": header
+                        }
 
-    raise ValueError(f"No table found whose header contains keyword '{keyword}'.")
+        # ✅ No crash — controlled failure
+        return None
 
+    except Exception as e:
+        return None
 
 def extract_text_from_pdf(uploaded_file):
     """Extracts plain text from PDF file"""
@@ -289,7 +297,16 @@ if st.button("Generate Article"):
         
 
         with st.spinner("Extracting facts..."):
-            facts=get_table_json_by_header(report_file,"Tractor OEM")
+            result = get_table_json_by_header(report_file, "Tractor OEM")
+
+            if not result:
+                st.error(
+                    "❌ Could not find Tractor OEM table in this document.\n\n"
+                    "👉 Please upload a valid sales report containing tractor data."
+                )
+                st.stop()
+
+            facts = result["data"]
             #facts = extract_facts(report_text)
         #st.json(facts)
 
